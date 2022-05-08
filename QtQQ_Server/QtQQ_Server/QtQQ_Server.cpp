@@ -213,6 +213,7 @@ void QtQQ_Server::on_queryDepartmentBtn_clicked()
 
 void QtQQ_Server::on_queryIDBtn_clicked()
 {
+	ui.departmentBox->setCurrentIndex(0);
 	m_depID = m_compDepID;
 
 	//检测员工QQ号是否输入
