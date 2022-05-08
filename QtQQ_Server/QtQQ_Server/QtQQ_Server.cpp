@@ -206,6 +206,7 @@ void QtQQ_Server::onRefresh()
 
 void QtQQ_Server::on_queryDepartmentBtn_clicked()
 {
+	ui.queryIDLineEdit->clear();
 	m_employeeID = 0;
 	m_depID = ui.departmentBox->currentData().toInt();
 }
