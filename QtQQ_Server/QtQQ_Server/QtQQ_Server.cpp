@@ -4,11 +4,14 @@
 #include <QSqlRecord>
 #include <QAbstractItemView>
 #include <QSqlQuery>
+#include <QFileDialog>
 
-const int tcpPort = 8888;
+const int gTcpPort = 8888;
+const int gUdpPort = 6666;
 
 QtQQ_Server::QtQQ_Server(QWidget *parent)
     : QDialog(parent)
+	,m_pixPath("")
 {
     ui.setupUi(this);
 
@@ -42,6 +45,7 @@ QtQQ_Server::QtQQ_Server(QWidget *parent)
 	connect(m_timer, &QTimer::timeout, this, &QtQQ_Server::onRefresh);
 
 	initTcpSocket();
+	initUdpSocket();
 }
 
 void QtQQ_Server::initComboBoxData()
@@ -79,12 +83,17 @@ void QtQQ_Server::initComboBoxData()
 
 void QtQQ_Server::initTcpSocket()
 {
-	m_tcpServer = new TcpServer(tcpPort);
+	m_tcpServer = new TcpServer(gTcpPort);
 	m_tcpServer->run();
 
 	//收到tcp客户端发来的信息后进行udp广播
 	connect(m_tcpServer, &TcpServer::signalTcpMsgComes,
 		this, &QtQQ_Server::onUDPbroadMsg);
+}
+
+void QtQQ_Server::initUdpSocket()
+{
+	m_udpSender = new QUdpSocket(this);
 }
 
 bool QtQQ_Server::connectMySql()
@@ -215,6 +224,7 @@ void QtQQ_Server::on_queryIDBtn_clicked()
 {
 	ui.departmentBox->setCurrentIndex(0);
 	m_depID = m_compDepID;
+	m_employeeID = 0;
 
 	//检测员工QQ号是否输入
 	if(!ui.queryIDLineEdit->text().length()){
@@ -228,6 +238,7 @@ void QtQQ_Server::on_queryIDBtn_clicked()
 	//获取用户输入的员工QQ号
 	int employeeID = ui.queryIDLineEdit->text().toInt();
 
+	//检测员工QQ号是否输入正确
 	QSqlQuery queryInfo(QString("SELECT * FROM tab_employees WHERE employeeID = %1").arg(employeeID));
 	queryInfo.exec();
 	if (!queryInfo.first()) {
@@ -244,6 +255,130 @@ void QtQQ_Server::on_queryIDBtn_clicked()
 	}
 }
 
-void QtQQ_Server::onUDPbroadMsg(QByteArray& btData) {
+//注销员工QQ号
+void QtQQ_Server::on_logoutBtn_clicked()
+{
+	ui.queryIDLineEdit->clear();
+	ui.departmentBox->setCurrentIndex(0);
+	m_depID = m_compDepID;
+	m_employeeID = 0;
 
+	//检测员工QQ号是否输入
+	if (!ui.logoutIDLineEdit->text().length()) {
+		QMessageBox::information(this,
+			QString::fromLocal8Bit("提示"),
+			QString::fromLocal8Bit("请输入员工QQ号！"));
+		ui.logoutIDLineEdit->setFocus();
+		return;
+	}
+
+	//获取用户输入的员工QQ号
+	int employeeID = ui.logoutIDLineEdit->text().toInt();
+
+	//检测员工QQ号是否输入正确
+	QSqlQuery queryInfo(QString("SELECT employee_name FROM tab_employees WHERE employeeID = %1").arg(employeeID));
+	queryInfo.exec();
+	if (!queryInfo.first()) {
+		QMessageBox::information(this,
+			QString::fromLocal8Bit("提示"),
+			QString::fromLocal8Bit("请输入正确的员工QQ号！"));
+		ui.logoutIDLineEdit->clear();
+		ui.logoutIDLineEdit->setFocus();
+		return;
+	}
+	else {
+		//注销操作：更新数据库数据，将员工的status设置为0
+		QSqlQuery sqlUpdate(QString("UPDATE tab_employees SET status = 0 WHERE employeeID = %1").arg(employeeID));
+		sqlUpdate.exec();
+
+		//获取被注销员工的姓名
+		QString strName = queryInfo.value(0).toString();
+
+		QMessageBox::information(this,
+			QString::fromLocal8Bit("提示"),
+			QString::fromLocal8Bit("员工 %1 的企业QQ：%2 已被注销！")
+			.arg(strName)
+			.arg(employeeID));
+	}
+}
+
+void QtQQ_Server::on_selectPictureBtn_clicked()
+{
+	//获取选择的头像路径
+	m_pixPath = QFileDialog::getOpenFileName(
+		this,
+		QString::fromLocal8Bit("选择头像"),
+		".",
+		"*.png;;*.jpg"
+	);
+
+	if (!m_pixPath.size()) {
+		return;
+	}
+
+	//将头像显示到标签
+	QPixmap pixmap;
+	pixmap.load(m_pixPath);
+
+	qreal widthRadio = (qreal)ui.headLabel->width() / (qreal)pixmap.width();
+	qreal heightRadio = (qreal)ui.headLabel->height() / (qreal)pixmap.height();
+
+	QSize size(pixmap.width() * widthRadio, pixmap.height() * heightRadio);
+	ui.headLabel->setPixmap(pixmap.scaled(size));
+}
+
+void QtQQ_Server::on_addBtn_clicked()
+{
+	//检测员工姓名的输入
+	QString strName = ui.nameLineEdit->text();
+	if (!strName.size()) {
+		QMessageBox::information(this,
+			QString::fromLocal8Bit("提示"),
+			QString::fromLocal8Bit("请输入员工姓名！"));
+		ui.nameLineEdit->setFocus();
+		return;
+	}
+
+	//检测员工选择头像
+	if (!m_pixPath.size()) {
+		QMessageBox::information(this,
+			QString::fromLocal8Bit("提示"),
+			QString::fromLocal8Bit("请输入员工头像路径！"));
+		return;
+	}
+
+	//数据库插入新的员工数据
+	//获取员工QQ号
+	QSqlQuery maxEmployeeID("SELECT MAX(employeeID) FROM tab_employees");
+	maxEmployeeID.exec();
+	maxEmployeeID.first();
+
+	int employeeID = maxEmployeeID.value(0).toInt() + 1;
+
+	//员工部门QQ号
+	int depID = ui.employeeDepBox->currentData().toInt();
+
+	//图片路径格式设置为xxx\xxx\xxx.png，"/"替换为"\"
+	m_pixPath.replace("/", "\\\\");
+
+	QSqlQuery insertSql(QString("INSERT INTO tab_employees(departmentID,employeeID,employee_name,picture) \
+								VALUES('%1', '%2', '%3', '%4')")
+								.arg(depID)
+								.arg(employeeID)
+								.arg(strName)
+								.arg(m_pixPath));
+
+	insertSql.exec();
+	QMessageBox::information(this,
+		QString::fromLocal8Bit("提示"),
+		QString::fromLocal8Bit("新增员工成功！"));
+	m_pixPath = "";
+	ui.nameLineEdit->clear();
+	ui.headLabel->setText(QString::fromLocal8Bit("   员工寸照   "));
+}
+
+void QtQQ_Server::onUDPbroadMsg(QByteArray& btData) {
+	for (quint16 port = gUdpPort; port < gUdpPort + 200; ++port) {
+		m_udpSender->writeDatagram(btData, btData.size(), QHostAddress::Broadcast, port);
+	}
 }

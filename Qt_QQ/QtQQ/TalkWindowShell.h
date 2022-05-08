@@ -5,6 +5,7 @@
 #include "basicwindow.h"
 #include <QMap>
 #include <QTcpSocket>
+#include <QUdpSocket>
 
 class TalkWindow;
 class TalkWindowItem;
@@ -39,8 +40,9 @@ public:
 	const QMap<QListWidgetItem*, QWidget*>& getTalkWindowItemMap()const;
 
 private:
-	void initControl();	//初始化控件
-	void initTcpSocket();//初始化TCP
+	void initControl();		//初始化控件
+	void initTcpSocket();	//初始化TCP
+	void initUdpSocket();	//初始化UDP
 	void getEmployeesID(QStringList& employeesList);	//获取所有员工QQ号
 	bool createJSFile(QStringList& employeeList);
 
@@ -55,6 +57,7 @@ private slots:
 	void onTalkWindowItemClicked(QListWidgetItem* item);
 	//表情被选中
 	void onEmotionItemClicked(int emotionNum);
+	void processPendingData();//处理UDP广播收到的数据
 
 private:
 	Ui::TalkWindowClass ui;
@@ -64,5 +67,6 @@ private:
 	EmotionWindow* m_emotionWindow;
 
 private:
-	QTcpSocket* m_tcpClientSocket;//TCP客户端
+	QTcpSocket* m_tcpClientSocket;	//TCP客户端
+	QUdpSocket* m_udpReceiver;		//udp接收端
 };

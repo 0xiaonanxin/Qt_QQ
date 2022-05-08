@@ -7,9 +7,11 @@
 #include <QSqlQueryModel>
 #include <QMessageBox>
 #include <QFile>
+#include <QUdpSocket>
 #include "TalkWindowItem.h"
 
 extern QString gLoginEmployeeID;
+const int gUdpPort = 6666;
 
 TalkWindowShell::TalkWindowShell(QWidget *parent)
 	: BasicWindow(parent)
@@ -18,6 +20,7 @@ TalkWindowShell::TalkWindowShell(QWidget *parent)
 	setAttribute(Qt::WA_DeleteOnClose);
 	initControl();
 	initTcpSocket();
+	initUdpSocket();
 
 	QFile file("Resources/MainWindow/MsgHtml/msgtmpl.js");
 	if (!file.size()) {
@@ -119,6 +122,17 @@ void TalkWindowShell::initTcpSocket()
 {
 	m_tcpClientSocket = new QTcpSocket(this);
 	m_tcpClientSocket->connectToHost("127.0.0.1", gtcpPort);
+}
+
+void TalkWindowShell::initUdpSocket()
+{
+	m_udpReceiver = new QUdpSocket(this);
+	for (quint16 port = gUdpPort; port < gUdpPort + 200; ++port) {
+		if (m_udpReceiver->bind(port, QUdpSocket::ShareAddress))
+			break;
+	}
+
+	connect(m_udpReceiver, &QUdpSocket::readyRead, this, &TalkWindowShell::processPendingData);
 }
 
 void TalkWindowShell::getEmployeesID(QStringList& employeesList)
@@ -326,4 +340,32 @@ void TalkWindowShell::onEmotionItemClicked(int emotionNum) {
 	if (curTalkWindow) {
 		curTalkWindow->addEmotionImage(emotionNum);
 	}
+}
+
+/********************************************************************************************************************************************
+	数据包格式：
+	文本数据包格式：群聊标志 + 发信息员工QQ号 + 收信息员工QQ号（群QQ号） + 信息类型（1）+ 数据长度 + 数据
+	表情数据包格式：群聊标志 + 发信息员工QQ号 + 收信息员工QQ号（群QQ号） + 信息类型（0）+ 表情个数 + image + 表情名称
+	文件数据包格式：群聊标志 + 发信息员工QQ号 + 收信息员工QQ号（群QQ号） + 信息类型（2）+ 文件字节数 + bytes + 文件名 + data_begin + 文件数据
+
+	群聊标志占1位，0表示单聊，1表示群聊
+	信息类型占1位，0表示表情信息，1表示文本信息，2表示文件信息
+
+	QQ号占5位，群QQ号占4位，数据长度占5位，表情名称占3位
+
+	（注意：当群聊标志为1时，则数据包没有收信息员工QQ号，而是收信息群QQ号
+			当群聊标志为0时，则数据包没有收信息群QQ号，而是收信息员工QQ号）
+
+	群聊文本信息如：1100012001100005Hello 表示QQ10001向群2001发送文本信息，长度是5，数据为Hello
+	单聊图片信息如：010001100020060		  表示QQ10001向QQ10002发送表情60.png
+	群聊文件信息如：11000520002bytestest.txtdata_beginhelloworld
+									      表示QQ10005向群2000发送文件信息，文件是text.txt，文件内容长度10，内容是helloworld
+	
+	群聊文件信息解析：1 10001 2001 1 00005 Hello
+	单聊图片信息解析：0 10001 10002 0 060
+	群聊文件信息解析：1 10005 2000 2 10 bytes test.txt data_begin helloworld
+********************************************************************************************************************************************/
+void TalkWindowShell::processPendingData()
+{
+
 }
