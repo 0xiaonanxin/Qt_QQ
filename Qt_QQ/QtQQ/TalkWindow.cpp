@@ -9,6 +9,7 @@
 #include <QMessageBox>
 #include <QSqlQueryModel>
 #include <QSqlQuery>
+#include "SendFile.h"
 
 TalkWindow::TalkWindow(QWidget* parent, const QString& uid/*, GroupType groupType*/)
 	: QWidget(parent)
@@ -44,6 +45,11 @@ QString TalkWindow::getTalkId()
 	return m_talkId;
 }
 
+void TalkWindow::onFileOpenBtnClicked(bool) {
+	SendFile* sendFile = new SendFile(this);
+	sendFile->show();
+}
+
 void TalkWindow::onItemDoubleClicked(QTreeWidgetItem* item, int column)
 {
 	bool bIsChild = item->data(0, Qt::UserRole).toBool();
@@ -70,7 +76,7 @@ void TalkWindow::initControl()
 
 	connect(ui.faceBtn, SIGNAL(clicked(bool)), parent(), SLOT(onEmotionBtnClicked(bool)));
 	connect(ui.sendBtn, SIGNAL(clicked(bool)), this, SLOT(onSendBtnClicked(bool)));
-
+	connect(ui.fileopenBtn, SIGNAL(clicked(bool)), this, SLOT(onFileOpenBtnClicked(bool)));
 	connect(ui.treeWidget, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(onItemDoubleClicked(QTreeWidgetItem*, int)));
 
 	if (m_isGroupTalk) {

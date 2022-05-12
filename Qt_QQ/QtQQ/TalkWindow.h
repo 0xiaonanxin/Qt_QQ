@@ -18,6 +18,7 @@ public:
 	QString getTalkId();
 
 private slots:
+	void onFileOpenBtnClicked(bool);
 	void onSendBtnClicked(bool);
 	void onItemDoubleClicked(QTreeWidgetItem* item, int column);
 
@@ -43,4 +44,5 @@ private:
 
 	//所有分组联系人姓名
 	QMap<QTreeWidgetItem*, QString> m_groupPeopleMap; 
+	friend class TalkWindowShell;
 };

@@ -12,7 +12,8 @@ class MsgHtmlObj :public QObject
 	Q_PROPERTY(QString msgRHtmlTmpl MEMBER m_msgRHtmlTmpl NOTIFY signalMsgHtml)
 	
 public:
-	MsgHtmlObj(QObject* parent);
+	//msgLPicPath 发信息来的人的头像路径
+	MsgHtmlObj(QObject* parent,QString msgLPicPath = "");
 
 signals:
 	void signalMsgHtml(const QString& html);
@@ -23,6 +24,7 @@ private:
 	QString getMsgTmplHtml(const QString& code);
 
 private:
+	QString m_msgLPicPath; //发信息来的人的头像路径
 	QString m_msgLHtmlTmpl;//别人发来的信息
 	QString m_msgRHtmlTmpl;//我发的信息
 };
@@ -59,4 +61,5 @@ signals:
 
 private:
 	MsgHtmlObj* m_msgHtmlObj;
+	QWebChannel* m_channel;
 };

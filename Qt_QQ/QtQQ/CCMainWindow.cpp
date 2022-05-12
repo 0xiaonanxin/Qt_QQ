@@ -15,6 +15,7 @@
 #include "RootContatitem.h"
 #include "ContactItem.h"
 
+QString gstrLoginHeadPath;
 extern QString gLoginEmployeeID;
 
 class CustomProxyStyle :public QProxyStyle
@@ -146,6 +147,7 @@ QString CCMainWindow::getHeadPicturePath()
 		strPicturePath = queryPicture.value(0).toString();
 	}
 
+	gstrLoginHeadPath = strPicturePath;
 	return strPicturePath;
 }
 

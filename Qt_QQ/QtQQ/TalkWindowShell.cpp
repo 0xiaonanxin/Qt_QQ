@@ -8,8 +8,13 @@
 #include <QMessageBox>
 #include <QFile>
 #include <QUdpSocket>
+#include <QSqlQuery>
+#include "WindowManager.h"
 #include "TalkWindowItem.h"
+#include "ReceiveFile.h"
 
+QString gFileName;	//文件名称
+QString gFileData;	//文件内容
 extern QString gLoginEmployeeID;
 const int gUdpPort = 6666;
 
@@ -250,6 +255,50 @@ bool TalkWindowShell::createJSFile(QStringList & employeeList)
 	}
 }
 
+void TalkWindowShell::handleReceivedMsg(int senderEmployeeID, int msgType, QString strMsg)
+{
+	QMsgTextEdit msgTextEdit;
+	msgTextEdit.setText(strMsg);
+
+	if (msgType == 1) {//文本信息
+		msgTextEdit.document()->toHtml();
+	}
+	else if(msgType == 0)//表情信息
+	{
+		const int emotionWidth = 3;
+		int emotionNum = strMsg.length() / emotionWidth;
+
+		for (int i = 0; i < emotionNum; i++) {
+			msgTextEdit.addEmotionUrl(strMsg.mid(i * emotionWidth, emotionWidth).toInt());
+		}
+	}
+
+	QString html = msgTextEdit.document()->toHtml();
+
+	//文本html如果没有字体则添加字体
+	if (!html.contains(".png") && !html.contains("</span>")) {
+		QString fontHtml;
+		QFile file(":/Resources/MainWindow/MsgHtml/msgFont.txt");
+		if (file.open(QIODevice::ReadOnly)) {
+			fontHtml = file.readAll();
+			fontHtml.replace("%1", strMsg);
+			file.close();
+		}
+		else {
+			QMessageBox::information(this, QString::fromLocal8Bit("提示")
+				, QString::fromLocal8Bit("文件msgFont.txt不存在！"));
+			return;
+		}
+
+		if (!html.contains(fontHtml)) {
+			html.replace(strMsg, fontHtml);
+		}
+	}
+
+	TalkWindow* talkWindow = dynamic_cast<TalkWindow*>(ui.rightStackedWidget->currentWidget());
+	talkWindow->ui.msgWidget->appendMsg(html, QString::number(senderEmployeeID));
+}
+
 //文本数据包格式：群聊标志 + 发信息员工QQ号 + 收信息员工QQ号(群QQ号) + 信息类型 + 数据长度 + 数据
 //表情数据包格式：群聊标志 + 发信息员工QQ号 + 收信息员工QQ号(群QQ号) + 信息类型 + 表情个数 + images + 数据
 //msgType 0表情信息 1文本信息 2文件信息
@@ -352,20 +401,189 @@ void TalkWindowShell::onEmotionItemClicked(int emotionNum) {
 	信息类型占1位，0表示表情信息，1表示文本信息，2表示文件信息
 
 	QQ号占5位，群QQ号占4位，数据长度占5位，表情名称占3位
-
 	（注意：当群聊标志为1时，则数据包没有收信息员工QQ号，而是收信息群QQ号
 			当群聊标志为0时，则数据包没有收信息群QQ号，而是收信息员工QQ号）
 
-	群聊文本信息如：1100012001100005Hello 表示QQ10001向群2001发送文本信息，长度是5，数据为Hello
-	单聊图片信息如：010001100020060		  表示QQ10001向QQ10002发送表情60.png
+	群聊文本信息如：1100012001100005Hello   表示QQ10001向群2001发送文本信息，长度是5，数据为Hello
+	单聊图片信息如：0100011000201images060	表示QQ10001向QQ10002发送1个表情60.png
 	群聊文件信息如：11000520002bytestest.txtdata_beginhelloworld
-									      表示QQ10005向群2000发送文件信息，文件是text.txt，文件内容长度10，内容是helloworld
+									        表示QQ10005向群2000发送文件信息，文件是text.txt，文件内容长度10，内容是helloworld
 	
 	群聊文件信息解析：1 10001 2001 1 00005 Hello
-	单聊图片信息解析：0 10001 10002 0 060
+	单聊图片信息解析：0 10001 10002 0 1 images 060
 	群聊文件信息解析：1 10005 2000 2 10 bytes test.txt data_begin helloworld
 ********************************************************************************************************************************************/
 void TalkWindowShell::processPendingData()
 {
+	//判断端口中是否有未处理的数据
+	while (m_udpReceiver->hasPendingDatagrams()) {
+		const static int groupFlagWidth = 1;	//群聊标志占位
+		const static int groupWidth = 4;		//群QQ号宽度
+		const static int employeeWidth = 5;		//员工QQ号宽度
+		const static int msgTypeWidth = 1;		//信息类型宽度
+		const static int msgLengthWidth = 5;	//文本信息长度
+		const static int pictureWidth = 3;		//表情图片的宽度
 
+		//读取udp数据
+		QByteArray btData;
+		//pendingDatagramSize 返回第一个待处理的UDP数据报的大小
+		btData.resize(m_udpReceiver->pendingDatagramSize());
+		//读取数据包存入btData
+		m_udpReceiver->readDatagram(btData.data(), btData.size());
+
+		QString strData = btData.data();
+		QString strWindowID;//聊天窗口ID，群聊则是群号，单聊则是员工QQ号
+		QString strSendEmployeeID, strReceiveEmployeeID;//发送及接收端的QQ号
+		QString strMsg;	//数据
+		
+		int msgLen;	//数据长度
+		int MsgType;//数据类型
+
+		strSendEmployeeID = strData.mid(groupFlagWidth, employeeWidth);
+
+		//自己发的信息不作处理
+		if (strSendEmployeeID == gLoginEmployeeID) {
+			return;
+		}
+
+		if (btData[0] == '1') {//群聊
+			//群QQ号
+			strWindowID = strData.mid(groupFlagWidth + employeeWidth, groupWidth);
+			
+			QChar cMsgType = btData[groupFlagWidth + employeeWidth + groupWidth];
+			if (cMsgType == '1') {//文本信息
+				MsgType = 1;
+				msgLen = strData.mid(groupFlagWidth + employeeWidth
+					+ groupWidth + msgTypeWidth, msgLengthWidth).toInt();
+				strMsg = strData.mid(groupFlagWidth + employeeWidth
+					+ groupWidth + msgTypeWidth + msgLengthWidth, msgLen);
+			}
+			else if (cMsgType == '0') {//表情信息
+				MsgType = 0;
+				int posImages = strData.indexOf("images");
+				strMsg = strData.right(strData.length() - posImages - QString("images").length());
+			}
+			else if (cMsgType == '2') {//文件信息
+				MsgType = 2;
+				int bytesWidth = QString("bytes").length();
+				int posBytes = strData.indexOf("bytes");
+				int posData_begin = strData.indexOf("data_begin");
+
+				//文件名称
+				QString fileName = strData.mid(posBytes + bytesWidth, posData_begin - posBytes - bytesWidth);
+				gFileName = fileName;
+
+				//文件内容
+				int dataLengthWidth;
+				int posData = posData_begin + QString("data_begin").length();
+				strMsg = strData.mid(posData);
+				gFileData = strMsg;
+
+				//根据employeeID获取发送者姓名
+				QString sender;
+				int employeeID = strSendEmployeeID.toInt();
+				QSqlQuery querySenderName(QString("SELECT employee_name FROM tab_employees WHERE employeeID = %1")
+												.arg(employeeID));
+				querySenderName.exec();
+
+				if (querySenderName.first()) {
+					sender = querySenderName.value(0).toString();
+				}
+
+				//接收文件的后续操作。。。
+				ReceiveFile* recvFile = new ReceiveFile(this);
+				connect(recvFile, &ReceiveFile::refuseFile, [this]() {
+					return;
+				});
+				QString msgLabel = QString::fromLocal8Bit("收到来自") + sender
+					+ QString::fromLocal8Bit("发来的文件，是否接受？");
+				recvFile->setMsg(msgLabel);
+				recvFile->show();
+			}
+		}
+		else {//单聊
+			strReceiveEmployeeID = strData.mid(groupFlagWidth + employeeWidth, employeeWidth);
+			strWindowID = strSendEmployeeID;
+
+			//不是发给我的信息不作处理
+			if (strReceiveEmployeeID != gLoginEmployeeID) {
+				return;
+			}
+
+			//获取信息的类型
+			QChar cMsgType = btData[groupFlagWidth + employeeWidth + employeeWidth];
+			if (cMsgType == '1') {//文本信息
+				MsgType = 1;
+
+				//文本信息的长度
+				msgLen = strData.mid(groupFlagWidth + employeeWidth + employeeWidth
+					+ msgTypeWidth, msgLengthWidth).toInt();
+
+				//文本信息
+				strMsg = strData.mid(groupFlagWidth + employeeWidth + employeeWidth
+					+ msgTypeWidth + msgLengthWidth, msgLen);
+			}
+			else if (cMsgType == '0') {//表情信息
+				MsgType = 0;
+				int posImages = strData.indexOf("images");
+				int imagesWidth = QString("images").length();
+				strMsg = strData.mid(posImages + imagesWidth);
+			}
+			else if (cMsgType == '2') {//文件信息
+				MsgType = 2;
+
+				int bytesWidth = QString("bytes").length();
+				int posBytes = strData.indexOf("bytes");
+				int data_beginWidth = QString("data_begin").length();
+				int posData_begin = strData.indexOf("data_begin");
+
+				//文件名称
+				QString filename = strData.mid(posBytes + bytesWidth, posData_begin - posBytes - bytesWidth);
+				gFileName = filename;
+
+				//文件内容
+				strMsg = strData.mid(posData_begin + data_beginWidth);
+				gFileData = strMsg;
+
+				//根据employeeID获取发送者姓名
+				QString sender;
+				int employeeID = strSendEmployeeID.toInt();
+				QSqlQuery querySenderName(QString("SELECT employee_name FROM tab_employees WHERE employeeID = %1")
+					.arg(employeeID));
+				querySenderName.exec();
+
+				if (querySenderName.first()) {
+					sender = querySenderName.value(0).toString();
+				}
+
+				ReceiveFile* recvFile = new ReceiveFile(this);
+				connect(recvFile, &ReceiveFile::refuseFile, [this]() {
+					return;
+				});
+				QString msgLabel = QString::fromLocal8Bit("收到来自") + sender
+					+ QString::fromLocal8Bit("发来的文件，是否接受？");
+				recvFile->setMsg(msgLabel);
+				recvFile->show();
+			}
+		}
+
+		//将聊天窗口设为活动的
+		QWidget* widget = WindowManager::getInstance()->findWindowName(strWindowID);
+		if (widget) {//聊天窗口存在
+			this->setCurrentWidget(widget);
+
+			//同步激活左侧聊天列表
+			QListWidgetItem* item = m_talkwindowItemMap.key(widget);
+			item->setSelected(true);
+		}
+		else {//聊天窗口不存在
+			return;
+		}
+
+		//文件信息另作处理
+		if (MsgType != 2) {
+			int sendEmployeeID = strSendEmployeeID.toInt();
+			handleReceivedMsg(sendEmployeeID, MsgType, strMsg);
+		}
+	}
 }

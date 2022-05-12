@@ -45,6 +45,8 @@ private:
 	void initUdpSocket();	//初始化UDP
 	void getEmployeesID(QStringList& employeesList);	//获取所有员工QQ号
 	bool createJSFile(QStringList& employeeList);
+	//处理接收到的信息
+	void handleReceivedMsg(int senderEmployeeID, int msgType, QString strMsg);
 
 public slots:
 	//表情按钮点击后执行的槽函数
