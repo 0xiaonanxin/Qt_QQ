@@ -10,7 +10,7 @@
 //定义宏，按钮宽度为 27
 #define BUTTON_WIDTH 27
 //定义宏，标题栏高度为 27
-#define TITLE_HEIGHT 27
+#define TITLE_HEIGHT 40
 
 //构造函数
 TitleBar::TitleBar(QWidget *parent)
@@ -65,7 +65,7 @@ void TitleBar::initControl()
 	mylayout->addWidget(m_pButtonClose);
 
 	//设置布局周围使用的左、上、右和下边距
-	mylayout->setContentsMargins(5, 0, 0, 0);
+	mylayout->setContentsMargins(5, 6, 8, 0);
 	//设置控件之间的间距
 	mylayout->setSpacing(0);
 

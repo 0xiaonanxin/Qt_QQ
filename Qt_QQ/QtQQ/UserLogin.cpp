@@ -3,20 +3,52 @@
 #include <QMessageBox>
 #include <QSqlDatabase>
 #include <QSqlQuery>
+#include <QMovie>
+#include <QAction>
+#include <QPainter>
+#include <qmath.h>
+#include <qdrawutil.h>
+#include <QSettings>
+#include <QTimer>
 
 QString gLoginEmployeeID;//登陆者QQ号（员工号）
+
+#define ACCOUNT_KEY "account"
+#define PASSWORD_KEY "password"
 
 UserLogin::UserLogin(QWidget *parent)
 	: BasicWindow(parent)
 {
 	ui.setupUi(this);
+
+	m_headLabel = new QLabel(this);
+	m_headLabel->move(width() / 2 - 34, ui.titleWidget->height() - 34);
+	m_headLabel->setFixedSize(68, 68);
+
+	m_timer = new QTimer;
+	m_timer->setInterval(200);
+	m_timer->start();
+	connect(m_timer, &QTimer::timeout, this, &UserLogin::refreshHeadLabel);
+
 	//设置窗体的属性
 	//Qt::WA_DeleteOnClose 当该小组件接受了关闭事件（见QWidget::closeEvent()），使Qt删除该小组件。
 	setAttribute(Qt::WA_DeleteOnClose);
 	initTitleBar();
-	setTitleBarTitle("", ":/Resources/MainWindow/qqlogoclassic.png");
+	//setTitleBarTitle("", ":/Resources/MainWindow/qqlogoclassic.png");
 	loadStyleSheet("UserLogin");
+
+	setAttribute(Qt::WA_TranslucentBackground);
+	//setWindowFlags(Qt::FramelessWindowHint);
+	
+	QSize size(434, 158);
+	initbackground(size);
+
 	initControl();
+
+	ui.editUserAccount->setText(ReadInit(ACCOUNT_KEY));
+	if (ReadInit(PASSWORD_KEY) != "") {
+		ui.editPassword->setText(ReadInit(PASSWORD_KEY));
+	}
 }
 
 UserLogin::~UserLogin()
@@ -24,15 +56,19 @@ UserLogin::~UserLogin()
 }
 
 void UserLogin::initControl() {
-	QLabel* headlabel = new QLabel(this);
-	headlabel->setFixedSize(68, 68);
-	QPixmap pix(":/Resources/MainWindow/head_mask.png");
-	headlabel->setPixmap(getRoundImage(QPixmap(":/Resources/MainWindow/app/logo.ico"), pix, headlabel->size()));
-	headlabel->move(width() / 2 - 34, ui.titleWidget->height() - 34);
+	updateHeadLabel(m_headLabel, ":/Resources/MainWindow/app/logo.ico");
 	connect(ui.loginBtn, &QPushButton::clicked, this, &UserLogin::onLoginBtnClicked);
 
-	//连接数据库失败
-	if (!connectMySql()) {
+	//在账号输入框左侧放置图标
+	QAction* UserAction = new QAction(ui.editUserAccount);
+	UserAction->setIcon(QIcon(":/Resources/qtqq_images/QQ.png"));
+	ui.editUserAccount->addAction(UserAction, QLineEdit::LeadingPosition);//表示action所在方位（左侧）
+	//在密码输入框左侧放置图标
+	QAction* PassAction = new QAction(ui.editPassword);
+	PassAction->setIcon(QIcon(":/Resources/qtqq_images/lock.png"));
+	ui.editPassword->addAction(PassAction, QLineEdit::LeadingPosition);//表示action所在方位（左侧）
+												 
+	if (!connectMySql()) { //连接数据库失败
 		QMessageBox::information(NULL, QString::fromLocal8Bit("提示"),
 			QString::fromLocal8Bit("连接数据库失败！"));
 		close();
@@ -106,9 +142,87 @@ bool UserLogin::veryfyAccountCode(bool &isAccountLogin, QString &strAccount)
 	return false;
 }
 
+void UserLogin::initbackground(const QSize& size)
+{
+	//加载动态图
+	m_movie = new QMovie(":/Resources/qtqq_images/back.gif");
+
+	//设置动态图大小
+	m_movie->setScaledSize(size);
+
+	//添加动态图
+	ui.backLabel->setMovie(m_movie);
+
+	//开始动画
+	m_movie->start();
+}
+
+void UserLogin::WriteInit(QString key, QString value)
+{
+	//创建配置文件操作对象
+	QSettings* setting = new QSettings(m_path, QSettings::IniFormat);
+
+	//将信息写入配置文件
+	setting->beginGroup("config");
+	setting->setValue(key, value);
+	setting->endGroup();
+	delete setting;
+}
+
+QString UserLogin::ReadInit(QString key)
+{
+	//创建配置文件操作对象
+	QSettings* setting = new QSettings(m_path, QSettings::IniFormat);
+
+	//读取配置信息
+	QString value = setting->value(QString("config/%1").arg(key)).toString();
+	delete setting;
+
+	return value;
+}
+
+void UserLogin::refreshHeadLabel()
+{
+	QString account = ui.editUserAccount->text();
+	QSqlQuery sqlIDHeadLabel(QString("SELECT picture from tab_employees WHERE employeeID=%1")
+										.arg(account));
+	QSqlQuery sqlNameHeadLabel(QString("SELECT picture from tab_employees WHERE employee_name='%1'")
+										.arg(account));
+
+	sqlIDHeadLabel.exec();
+	sqlNameHeadLabel.exec();
+	QString headLabelPath;
+	if (sqlIDHeadLabel.first()) {
+		headLabelPath = sqlIDHeadLabel.value(0).toString();
+		updateHeadLabel(m_headLabel, headLabelPath);
+	}
+	if (sqlNameHeadLabel.first()) {
+		headLabelPath = sqlNameHeadLabel.value(0).toString();
+		updateHeadLabel(m_headLabel, headLabelPath);
+	}
+}
+
+void UserLogin::updateHeadLabel(QLabel * headLabel, QString path)
+{
+	QPixmap pix(":/Resources/MainWindow/head_mask.png");
+	headLabel->setPixmap(getRoundImage(QPixmap(path), pix, headLabel->size()));
+}
+
+void UserLogin::paintEvent(QPaintEvent * event)
+{
+	Q_UNUSED(event);
+	//定义一个画家
+	QPainter painter(this);
+	QPixmap pixmap(":/Resources/qtqq_images/yy.png");
+	qDrawBorderPixmap(&painter, this->rect(), QMargins(0, 0, 0, 0), pixmap);
+	QRect rect(this->rect().x() + 8, this->rect().y() + 8, this->rect().width() - 16, this->rect().height() - 16);
+	painter.fillRect(rect, QColor(255, 255, 255));
+}
+
 void UserLogin::onLoginBtnClicked() {
 	bool isAccountLogin;
 	QString strAccount;//账号或QQ号
+	QString strPassword = ui.editPassword->text();
 
 	if (!veryfyAccountCode(isAccountLogin,strAccount)) {
 		QMessageBox::information(NULL, QString::fromLocal8Bit("提示"),
@@ -119,6 +233,14 @@ void UserLogin::onLoginBtnClicked() {
 
 		return;
 	}
+
+	if (ui.checkBox->isChecked()) {
+		WriteInit(PASSWORD_KEY, strPassword);
+	}
+	else {
+		WriteInit(PASSWORD_KEY, "");
+	}
+	WriteInit(ACCOUNT_KEY, strAccount);
 
 	//更新登录状态为已登录
 	QString strSqlOnline = QString("UPDATE tab_employees SET online = 2 WHERE employeeID = %1").arg(gLoginEmployeeID);

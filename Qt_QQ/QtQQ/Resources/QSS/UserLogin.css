@@ -63,16 +63,24 @@ QCheckBox::indicator:enabled:checked:hover {
 }
 
 QLineEdit#editUserAccount, QLineEdit#editPassword{
-	background: #FFFFFF;
+	background:transparent;
 	border: 1px solid #DDDDDD;
+	border-top-color:rgba(255,255,255,0);
+	border-right-color:rgba(255,255,255,0);
+	border-left-color:rgba(255,255,255,0);
+	border-bottom-color:rgb(129,129,129);
 	border-radius: 2px;
 	font-size: 14px;
 	color: #666666;
 }
 
 QLineEdit#editUserAccount:hover, QLineEdit#editPassword:hover{
-	background: #FFFFFF;
+	background:transparent;
 	border: 1px solid rgb(0, 161, 219);
+	border-top-color:rgba(255,255,255,0);
+	border-right-color:rgba(255,255,255,0);
+	border-left-color:rgba(255,255,255,0);
+	border-bottom-color:rgb(129,129,129);
 	border-radius: 2px;
 	font-size: 14px;
 	color: #666666;

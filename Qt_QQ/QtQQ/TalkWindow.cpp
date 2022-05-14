@@ -11,6 +11,8 @@
 #include <QSqlQuery>
 #include "SendFile.h"
 
+extern QString gLoginEmployeeID;//登录者QQ号（员工号）
+
 TalkWindow::TalkWindow(QWidget* parent, const QString& uid/*, GroupType groupType*/)
 	: QWidget(parent)
 	, m_talkId(uid)
@@ -55,6 +57,12 @@ void TalkWindow::onItemDoubleClicked(QTreeWidgetItem* item, int column)
 	bool bIsChild = item->data(0, Qt::UserRole).toBool();
 	if (bIsChild)
 	{
+		//即将打开的窗口的QQ号
+		QString talkId = item->data(0, Qt::UserRole + 1).toString();
+		if (talkId == gLoginEmployeeID) {
+			return;
+		}
+
 		QString strPeopleName = m_groupPeopleMap.value(item);
 		WindowManager::getInstance()->addNewTalkWindow(item->data(0, Qt::UserRole + 1).toString()/*, PTOP, strPeopleName*/);
 	}
@@ -320,6 +328,10 @@ void TalkWindow::initTalkWindow()
 	for (int i = 0; i < nEmployeeNum; i++) {
 		QModelIndex modelIndex = queryEmployeeModel.index(i, 0);
 		int employeeID = queryEmployeeModel.data(modelIndex).toInt();
+
+		/*if (employeeID == gLoginEmployeeID.toInt()) {
+			continue;
+		}*/
 
 		//添加子节点
 		addPeopInfo(pRootItem, employeeID);
