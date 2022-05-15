@@ -12,6 +12,8 @@ public:
 	~UserLogin();
 private slots:
 	void onLoginBtnClicked();
+	void on_forgetWordbtn_clicked();
+	void on_registBtn_clicked();
 
 private:
 	void initControl();

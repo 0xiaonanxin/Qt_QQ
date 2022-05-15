@@ -366,5 +366,7 @@
         <file>Resources/qtqq_images/lock.png</file>
         <file>Resources/qtqq_images/QQ.png</file>
         <file>Resources/qtqq_images/yy.png</file>
+        <file>Resources/QSS/ForgetPass.css</file>
+        <file>Resources/QSS/Register.css</file>
     </qresource>
 </RCC>

@@ -91,12 +91,14 @@
     <ClCompile Include="CustomMenu.cpp" />
     <ClCompile Include="EmotionLabelItem.cpp" />
     <ClCompile Include="EmotionWindow.cpp" />
+    <ClCompile Include="ForgetPass.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MsgWebView.cpp" />
     <ClCompile Include="NotifyManager.cpp" />
     <ClCompile Include="QClickLabel.cpp" />
     <ClCompile Include="QMsgTextEdit.cpp" />
     <ClCompile Include="ReceiveFile.cpp" />
+    <ClCompile Include="Register.cpp" />
     <ClCompile Include="RootContatitem.cpp" />
     <ClCompile Include="SendFile.cpp" />
     <ClCompile Include="SkinWindow.cpp" />
@@ -115,7 +117,9 @@
     <QtUic Include="CCMainWindow.ui" />
     <QtUic Include="ContactItem.ui" />
     <QtUic Include="EmotionWindow.ui" />
+    <QtUic Include="ForgetPass.ui" />
     <QtUic Include="ReceiveFile.ui" />
+    <QtUic Include="Register.ui" />
     <QtUic Include="SendFile.ui" />
     <QtUic Include="SkinWindow.ui" />
     <QtUic Include="TalkWindow.ui" />
@@ -137,6 +141,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonUtils.h" />
+    <QtMoc Include="Register.h" />
+    <QtMoc Include="ForgetPass.h" />
     <QtMoc Include="ReceiveFile.h" />
     <QtMoc Include="SendFile.h" />
     <QtMoc Include="MsgWebView.h" />

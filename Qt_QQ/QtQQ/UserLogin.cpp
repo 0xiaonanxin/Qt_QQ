@@ -10,6 +10,8 @@
 #include <qdrawutil.h>
 #include <QSettings>
 #include <QTimer>
+#include "ForgetPass.h"
+#include "Register.h"
 
 QString gLoginEmployeeID;//µÇÂ½ÕßQQºÅ£¨Ô±¹¤ºÅ£©
 
@@ -53,6 +55,18 @@ UserLogin::UserLogin(QWidget *parent)
 
 UserLogin::~UserLogin()
 {
+}
+
+void UserLogin::on_forgetWordbtn_clicked()
+{
+	ForgetPass* forgetPass = new ForgetPass;
+	forgetPass->show();
+}
+
+void UserLogin::on_registBtn_clicked()
+{
+	Register* regist = new Register;
+	regist->show();
 }
 
 void UserLogin::initControl() {
@@ -195,8 +209,7 @@ void UserLogin::refreshHeadLabel()
 	if (sqlIDHeadLabel.first()) {
 		headLabelPath = sqlIDHeadLabel.value(0).toString();
 		updateHeadLabel(m_headLabel, headLabelPath);
-	}
-	if (sqlNameHeadLabel.first()) {
+	}else if (sqlNameHeadLabel.first()) {
 		headLabelPath = sqlNameHeadLabel.value(0).toString();
 		updateHeadLabel(m_headLabel, headLabelPath);
 	}

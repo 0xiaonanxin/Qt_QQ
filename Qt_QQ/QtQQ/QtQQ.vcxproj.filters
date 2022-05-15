@@ -94,6 +94,12 @@
     <ClCompile Include="ReceiveFile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ForgetPass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Register.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="CCMainWindow.h">
@@ -159,6 +165,12 @@
     <QtMoc Include="ReceiveFile.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="ForgetPass.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="Register.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="CCMainWindow.ui">
@@ -189,6 +201,12 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="ReceiveFile.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="ForgetPass.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="Register.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>

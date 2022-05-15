@@ -1,0 +1,56 @@
+* {
+    font-family: Microsoft YaHei;
+}
+
+QWidget#Register
+{
+    background-color:#ffffff;
+    border: 1px solid #cccccc;
+    border-radius:4px;
+}
+
+QPushButton#selectPictureBtn,QPushButton#addBtn{
+	font-size:14px;
+	background:rgb(7, 189, 253);
+	color:#ffffff;
+	border:none;
+	border-radius:4px;
+}
+
+QPushButton#selectPictureBtn:hover, QPushButton#selectPictureBtn:pressed,
+QPushButton#addBtn:hover, QPushButton#addBtn:pressed{
+	background:rgb(33, 200, 253);
+}
+
+QLineEdit#nameLineEdit{
+	background: #FFFFFF;
+	border: 1px solid #DDDDDD;
+	border-radius: 2px;
+	font-size: 14px;
+	color: #666666;
+}
+
+QLineEdit#nameLineEdit:hover{
+	background: #FFFFFF;
+	border: 1px solid rgb(0, 161, 219);
+	border-radius: 2px;
+	font-size: 14px;
+	color: #666666;
+}
+
+QLineEdit#employeeDepBox{
+	background: #FFFFFF;
+	border: 1px solid #DDDDDD;
+	border-radius: 2px;
+	font-size: 14px;
+	color: #666666;
+}
+
+QLineEdit#employeeDepBox:hover{
+	background: #FFFFFF;
+	border: 1px solid rgb(0, 161, 219);
+	border-radius: 2px;
+	font-size: 14px;
+	color: #666666;
+}
+
